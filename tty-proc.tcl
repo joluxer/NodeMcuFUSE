@@ -154,12 +154,19 @@ proc readMCU {chan} {
     }
   }
 
-  # der Rest geht weiter an das Terminal
+  # forward remaining data to the user terminal
+  if {[catch "eof $userPty(MasterFD)" have_eof]} {
+    set have_eof 1
+  }
   if {!$userPty(printHexdump)} {
     checkForPrompt $data
-    puts -nonewline $userPty(MasterFD) $data
+    if {!$have_eof} {
+      puts -nonewline $userPty(MasterFD) $data
+    }
   }
-  flush $userPty(MasterFD)
+  if {!$have_eof} {
+    flush $userPty(MasterFD)
+  }
 
   if {[eof $chan]} {
     fileevent $chan readable {}

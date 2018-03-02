@@ -3,7 +3,11 @@
 package require fuse
 package require Tclx 8.0
 
-set PROGDIR [file normalize [file dirname $argv0]]
+set prog [file normalize $argv0]
+while {[file type $prog] eq "link"} {
+  set prog [file normalize [file readlink $prog]]
+}
+set PROGDIR [file dirname $prog]
 
 ################
 # Debugging
@@ -41,7 +45,7 @@ set userPty(printHexdump) 0; # a flag indicating the output mode of the user ter
 
 #################
 # procedures for executing effects of changes in the virtual file system
-source basic-tree-ops.tcl
+source $PROGDIR/basic-tree-ops.tcl
 
 ##########################
 # the static part: a virtual file system
