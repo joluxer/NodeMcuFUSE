@@ -1,0 +1,7 @@
+Opened /dev/ttyUSB1 for communication to MCU
+Stopping /dev/ttyUSB1 because of EOF, starting search for usable TTY
+Opened /dev/ttyUSB0 for communication to MCU
+Stopping /dev/ttyUSB0 because of EOF, starting search for usable TTY
+Opened /dev/ttyUSB1 for communication to MCU
+Stopping /dev/ttyUSB1 because of EOF, starting search for usable TTY
+Opened /dev/ttyUSB0 for communication to MCU
