@@ -72,11 +72,11 @@ proc coReadMcuFsinfo {path} {
     set startString "FSINFO BEGIN"
     set stopString "FSINFO DONE"
     set txCmds {}
-    lappend txCmds "repeat"
+    lappend txCmds "pcall(function()"
     lappend txCmds "print('$startString')"
     lappend txCmds "print(file.fsinfo())"
     lappend txCmds "print('$stopString')"
-    lappend txCmds "until true"
+    lappend txCmds "end)"
 
     set cnt [llength $txCmds]
     foreach cmd $txCmds {

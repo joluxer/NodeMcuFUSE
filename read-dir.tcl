@@ -163,7 +163,7 @@ proc coReadMcuFiles {} {
     #  for _,f in ipairs(l) do print(f) end
     # until true
     set txCmds {}
-    lappend txCmds "repeat"
+    lappend txCmds "pcall(function()"
     lappend txCmds "local t=file.list()"
     lappend txCmds "local l={}"
     lappend txCmds "for f,s in pairs(t) do"
@@ -171,7 +171,7 @@ proc coReadMcuFiles {} {
     lappend txCmds "end"
     lappend txCmds "uart.write(0, string.format('Filelist %04d\\r\\n', #l))"
     lappend txCmds "for _,f in ipairs(l) do uart.write(0, f, '\\r\\n') end"
-    lappend txCmds "until true"
+    lappend txCmds "end)"
 
     set cnt [llength $txCmds]
     foreach cmd $txCmds {

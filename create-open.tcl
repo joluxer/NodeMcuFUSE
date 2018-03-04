@@ -167,11 +167,11 @@ proc coCreateMcuFile {path} {
     # until true
     set stopString "CREATE DONE"
     set txCmds {}
-    lappend txCmds "repeat"
+    lappend txCmds "pcall(function()"
     lappend txCmds "local fd=file.open('$path','w')"
     lappend txCmds "fd:close()"
     lappend txCmds "print('$stopString')"
-    lappend txCmds "until true"
+    lappend txCmds "end)"
 
     set cnt [llength $txCmds]
     foreach cmd $txCmds {

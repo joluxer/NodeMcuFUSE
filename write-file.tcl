@@ -159,8 +159,8 @@ proc coWriteMcuFileData {path filedata offset} {
       # until true
       set stopString "UPLOAD DONE"
       set txCmds {}
-      lappend txCmds "repeat"
-      lappend txCmds "tmr.register($mcuTty(readWriteTimer),20,tmr.ALARM_SINGLE,function() print('$stopString') end)"
+      lappend txCmds "pcall(function()"
+      lappend txCmds "tmr.register($mcuTty(readWriteTimer),100,tmr.ALARM_SINGLE,function() print('$stopString') end)"
       lappend txCmds "local fd=file.open('$path','r+')"
       lappend txCmds "fd:seek('set',$chunkoffset)"
       lappend txCmds "local chunk=\[===\[$chunkdata1"
@@ -170,7 +170,7 @@ proc coWriteMcuFileData {path filedata offset} {
       lappend txCmds "chunk:gsub('%s*(\[0-9A-Fa-f\]\[0-9A-Fa-f\])',function (s) fd:write(string.char(tonumber('0x'..s))) end)"
       lappend txCmds "fd:close()"
       lappend txCmds "tmr.start($mcuTty(readWriteTimer))"
-      lappend txCmds "until true"
+      lappend txCmds "end)"
 
       set cnt [llength $txCmds]
       foreach cmd $txCmds {

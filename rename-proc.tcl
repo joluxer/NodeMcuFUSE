@@ -92,13 +92,13 @@ proc coRenameMcuFile {path newpath} {
     # until true
     set stopString "RENAME DONE"
     set txCmds {}
-    lappend txCmds "repeat"
+    lappend txCmds "pcall(function()"
     lappend txCmds "if file.exists('$newpath') then"
     lappend txCmds "file.remove('$newpath')"
     lappend txCmds "end"
     lappend txCmds "file.rename('$path','$newpath')"
     lappend txCmds "print('$stopString')"
-    lappend txCmds "until true"
+    lappend txCmds "end)"
 
     set cnt [llength $txCmds]
     foreach cmd $txCmds {

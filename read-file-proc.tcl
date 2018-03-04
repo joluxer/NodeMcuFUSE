@@ -18,7 +18,7 @@ proc Read_mcu {context path fileinfo size offset} {
 
   if {[dict get $stat type] eq "file"} {
     set fileSize [dict get $stat size]
-    
+
     if {$offset < $fileSize} {
       regsub "/mcu/" $path "" path
       set data [readMcuFileData $path $size $offset]
@@ -87,19 +87,20 @@ proc Read {context path fileinfo size offset} {
     # gib die Daten aus dem basic_tree
     return [Read_basic $context $path $fileinfo $size $offset]
   }
-  
+
   return -code error -errorcode [list POSIX ENOENT {}]
 }
 
 proc cleanupCoReadMcuFileData {oldName newName op} {
   global mcuTty
-  
+
   printDebugCallSite
 
   if {$mcuTty(commTimer) <= 0} {
     set mcu_tree_cache(dirty) 1
     puts -nonewline $mcuTty(ttyFD) ";\r;\r;\r-- timeout read\r"
     flush $mcuTty(ttyFD)
+    printDebugVars "RX timeout of processFileData"
   }
 
   printDebugVars "scheduling end of processFileData"
@@ -107,27 +108,27 @@ proc cleanupCoReadMcuFileData {oldName newName op} {
 }
 
 proc coReadMcuFileData {path size offset} {
-  global mcuTty mcu_file_chunk
-  
+  global mcuTty userPty mcu_file_chunk
+
   printDebugCallSite
 
   set data ""
   set mcuTty(processData) [info coroutine]
   set mcu_file_chunk("${path}_${offset}_${size}") {}
-  
+
   trace add command [info coroutine] delete cleanupCoReadMcuFileData
-  
+
   if {![catch "flush $mcuTty(ttyFD)"]} {
-  
+
     set startString "DUMP BEGIN\r\n"
     set stopString "\r\nDUMP END"
-    
+
     # repeat
-    #  local fd=file.open('init.lua','r'); 
+    #  local fd=file.open('init.lua','r');
     #  fd:seek('set', 0)
     #  local i=55
     #  local startstring='DUMP BEGIN\r\n'
-    #  tmr.register(6,20,tmr.ALARM_AUTO,function()
+    #  tmr.register(6,125,tmr.ALARM_AUTO,function()
     #   if startstring ~= nil then uart.write(0,startstring); startstring=nil end
     #   local chunk = fd:read(math.min(32, i))
     #   if chunk ~= nil then
@@ -136,60 +137,81 @@ proc coReadMcuFileData {path size offset} {
     #   i=i-32
     #   if i <= 1 then
     #    tmr.unregister(6)
-    #    fd:close(); 
+    #    fd:close();
     #    uart.write(0,'\r\nDUMP END')
     #   end
     #  end)
     #  tmr.start(6)
     # until true
     set txCmds {}
-    lappend txCmds "repeat"
-    lappend txCmds "local coll={}"
-    lappend txCmds "node.output(function(str) table.insert(coll, str) end)"
-    lappend txCmds "local fd=file.open('$path','r')"
+    lappend txCmds "coll={};node.output(function(str) table.insert(coll, str) end)"
+    lappend txCmds "pcall(function() local fd=file.open('$path','r')"
     lappend txCmds "fd:seek('set',$offset)"
     lappend txCmds "local i=$size"
     lappend txCmds "local startstring='[string map {\r "\\r" \n "\\n"} $startString]'"
-    lappend txCmds "tmr.register($mcuTty(readWriteTimer),20,tmr.ALARM_AUTO,function()"
+    lappend txCmds "tmr.register($mcuTty(readWriteTimer),130,tmr.ALARM_AUTO,function()"
     lappend txCmds "if startstring ~= nil then uart.write(0,startstring); startstring=nil end"
     lappend txCmds "local chunk=fd:read(math.min(32,i))"
     lappend txCmds "if chunk ~= nil then"
     lappend txCmds "chunk:gsub('.',function (c) uart.write(0,string.format('%02X',string.byte(c))) end)"
-    lappend txCmds "end"
     lappend txCmds "i=i-32"
+    lappend txCmds "else i=0"
+    lappend txCmds "end"
     lappend txCmds "if i <= 1 then"
+    lappend txCmds "uart.write(0,'[string map {\r "\\r" \n "\\n"} $stopString]')"
     lappend txCmds "tmr.unregister($mcuTty(readWriteTimer))"
     lappend txCmds "fd:close()"
-    lappend txCmds "uart.write(0,'[string map {\r "\\r" \n "\\n"} $stopString]')"
     lappend txCmds "node.output(nil)"
-    lappend txCmds "uart.write(0,table.concat(coll, \"\"))"
+    lappend txCmds "uart.write(0,table.concat(coll, ''))"
+    lappend txCmds "coll=nil"
     lappend txCmds "end"
     lappend txCmds "end)"
     lappend txCmds "tmr.start($mcuTty(readWriteTimer))"
-    lappend txCmds "until true"
-    
+    lappend txCmds "end)"
+
+    after 100
+
+    if {$userPty(atPrompt) != 1} {
+      puts -nonewline $mcuTty(ttyFD) "\r"
+      flush $mcuTty(ttyFD)
+
+      printDebugVars "waiting for primary prompt" data userPty(atPrompt)
+
+      restartCommTimeout 3
+      append data [yield ""]
+
+      while {![string match "*> " $data]} {
+        restartCommTimeout 3
+        append data [yield ""]
+        printDebugVars "waiting for primary prompt (while)" data userPty(atPrompt)
+      }
+      printDebugVars "got primary prompt" data
+      set data ""
+    }
+
     set cnt [llength $txCmds]
     foreach cmd $txCmds {
-      puts -nonewline $mcuTty(ttyFD) "$cmd\r\n"
+      puts -nonewline $mcuTty(ttyFD) "$cmd\r"
       flush $mcuTty(ttyFD)
       incr cnt -1
-      
+
       printDebugVars "sent cmd" cmd
       if {$cnt == 0} {
         break
       }
       printDebugVars "waiting for intermediate prompt" data
-            
+
       restartCommTimeout 3
       append data [yield ""]
-      
+
       while {![string match "*> " $data]} {
         restartCommTimeout 3
         append data [yield ""]
         printDebugVars "waiting for intermediate prompt (while)" data
       }
+      printDebugVars "got intermediate prompt" data
     }
-    
+
     # Datenverarbeitung
     # echo übergehen, auf Datenstart warten
     while {![string match "*$startString*" $data]} {
@@ -201,11 +223,11 @@ proc coReadMcuFileData {path size offset} {
       restartCommTimeout 3
       append data [yield ""]
     }
-    
+
     set cutEnd [expr [string last $startString $data] + [string length $startString] ]
     set data [string replace $data 0 $cutEnd]
     printDebugVars "cutting data" cutEnd data
-    
+
     while 1 {
       restartCommTimeout 3
       append data [yield ""]
@@ -220,10 +242,9 @@ proc coReadMcuFileData {path size offset} {
         set data [string range $data $dataend end]
         printDebugVars "file data" filehexdata
         set filedata [binary decode hex $filehexdata]
-        
+
         # filedata an Aufrufer exportieren via mcu_file_chunk(path offset size)
         set mcu_file_chunk("${path}_${offset}_${size}") $filedata
-        
         break
       }
     }
@@ -237,36 +258,39 @@ proc coReadMcuFileData {path size offset} {
   }
 
   # try to consume the final prompt to not to clutter the user terminal experience
-  if {[string match "> *" $data]} {
-    set data [string replace $data 0 1]
+  printDebugVars "remaining data" data
+  set promptClutter "> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> > "
+  if {[string match "${promptClutter}*" $data]} {
+    set data [string replace $data 0 [expr [string length $promptClutter] - 1 ] ]
   }
 
+  printDebugVars "returned data" data
   return $data
 }
 
 proc readMcuFileData {path size offset} {
   global mcuTty mcu_file_chunk
-  
+
   printDebugCallSite
-  
+
   if {[array names mcu_file_chunk -exact "${path}_${offset}_${size}"] eq ""} {
-    printDebugVars "waiting for processFileData slot" mcuTty(processData)
-  
+    printDebugVars "waiting for processFileData slot: ${path}_${offset}_${size}" mcuTty(processData)
+
     while {($mcuTty(processData) ne "")} {
       vwait mcuTty(processData)
     }
-  
+
     coroutine processFileData coReadMcuFileData $path $size $offset
   }
-  
-  printDebugVars "waiting for end of processFileData" mcuTty(processData)
-  
+
+  printDebugVars "waiting for end of processFileData: ${path}_${offset}_${size}" mcuTty(processData)
+
   if {$mcuTty(processData) ne ""} then {
     vwait mcuTty(processData)
   }
-  printDebugVars "reached end of processFileData" mcuTty(processData)
-  
-  after idle "array unset mcu_file_chunk \"${path}_${offset}_${size}\""
-  
+  printDebugVars "reached end of processFileData: ${path}_${offset}_${size}" mcuTty(processData)
+
+  after 10 "array unset mcu_file_chunk \"${path}_${offset}_${size}\""
+
   return $mcu_file_chunk("${path}_${offset}_${size}")
 }

@@ -91,10 +91,10 @@ proc coUnlinkMcuFile {path} {
     # until true
     set stopString "UNLINK DONE"
     set txCmds {}
-    lappend txCmds "repeat"
+    lappend txCmds "pcall(function()"
     lappend txCmds "file.remove('$path')"
     lappend txCmds "print('$stopString')"
-    lappend txCmds "until true"
+    lappend txCmds "end)"
 
     set cnt [llength $txCmds]
     foreach cmd $txCmds {
