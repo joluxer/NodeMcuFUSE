@@ -147,9 +147,6 @@ proc coTruncateMcuFile {path} {
     # Datenverarbeitung
     # echo übergehen, auf Ende-Meldung warten
     while 1 {
-      restartCommTimeout 3
-      append data [yield ""]
-
       set dataend [string last "$stopString\r\n" $data]
       
       printDebugVars "skipping echo for data end" data dataend
@@ -166,6 +163,9 @@ proc coTruncateMcuFile {path} {
       if {$datLen > 20} {
         set data [string replace $data 0 [expr $datLen - 21]]
       }
+
+      restartCommTimeout 3
+      append data [yield ""]
     }
     
     dict set mcu_tree_cache(/mcu/$path) size 0

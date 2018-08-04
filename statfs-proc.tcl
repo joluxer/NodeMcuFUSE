@@ -117,9 +117,6 @@ proc coReadMcuFsinfo {path} {
     printDebugVars "cutting data" cutEnd data
     
     while 1 {
-      restartCommTimeout 3
-      append data [yield ""]
-
       set dataend [expr [string last "\r\n$stopString\r\n" $data] - 1]
       printDebugVars "collecting data" data dataend
 
@@ -140,6 +137,9 @@ proc coReadMcuFsinfo {path} {
         
         break
       }
+
+      restartCommTimeout 3
+      append data [yield ""]
     }
 
     if {![string match "> *" $data]} {

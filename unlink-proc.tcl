@@ -121,9 +121,6 @@ proc coUnlinkMcuFile {path} {
     # Datenverarbeitung
     # echo übergehen, auf Ende-Meldung warten
     while 1 {
-      restartCommTimeout 3
-      append data [yield ""]
-
       set dataend [string last "$stopString\r\n" $data]
       
       printDebugVars "skipping echo for data end" data dataend
@@ -140,6 +137,9 @@ proc coUnlinkMcuFile {path} {
       if {$datLen > 20} {
         set data [string replace $data 0 [expr $datLen - 21]]
       }
+
+      restartCommTimeout 3
+      append data [yield ""]
     }
     
     array unset mcu_tree_cache /mcu/$path

@@ -198,9 +198,6 @@ proc coWriteMcuFileData {path filedata offset} {
       # Datenverarbeitung
       # echo übergehen, auf Ende-Meldung warten
       while 1 {
-        restartCommTimeout 3
-        append data [yield ""]
-
         set dataend [string last "$stopString\r\n" $data]
         
         printDebugVars "skipping echo for data end" data dataend
@@ -217,6 +214,9 @@ proc coWriteMcuFileData {path filedata offset} {
         if {$datLen > 20} {
           set data [string replace $data 0 [expr $datLen - 21]]
         }
+
+        restartCommTimeout 3
+        append data [yield ""]
       }
       
       set hexdata [string replace $hexdata 0 255]; # remove the sent part and go over
@@ -229,7 +229,7 @@ proc coWriteMcuFileData {path filedata offset} {
     printDebugVars "size calculation" xfersize oldfilesize xferend
     if {$xferend > $oldfilesize} {
       dict set mcu_tree_cache(/mcu/$path) size $xferend
-		}
+    }
     dict set mcu_tree_cache(/mcu/$path) mtime [clock seconds]
     
     #~ if {![string match "> *" $data]} {

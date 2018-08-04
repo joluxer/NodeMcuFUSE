@@ -149,7 +149,7 @@ proc coReadMcuFileData {path size offset} {
     lappend txCmds "fd:seek('set',$offset)"
     lappend txCmds "local i=$size"
     lappend txCmds "local startstring='[string map {\r "\\r" \n "\\n"} $startString]'"
-    lappend txCmds "tmr.register($mcuTty(readWriteTimer),130,tmr.ALARM_AUTO,function()"
+    lappend txCmds "tmr.register($mcuTty(readWriteTimer),120,tmr.ALARM_AUTO,function()"
     lappend txCmds "if startstring ~= nil then uart.write(0,startstring); startstring=nil end"
     lappend txCmds "local chunk=fd:read(math.min(32,i))"
     lappend txCmds "if chunk ~= nil then"
@@ -229,9 +229,6 @@ proc coReadMcuFileData {path size offset} {
     printDebugVars "cutting data" cutEnd data
 
     while 1 {
-      restartCommTimeout 3
-      append data [yield ""]
-
       set dataend [expr [string last $stopString $data] - 1]
       printDebugVars "collecting data" data dataend
 
@@ -247,6 +244,9 @@ proc coReadMcuFileData {path size offset} {
         set mcu_file_chunk("${path}_${offset}_${size}") $filedata
         break
       }
+
+      restartCommTimeout 3
+      append data [yield ""]
     }
 
     #~ if {![string match "> *" $data]} {

@@ -198,9 +198,6 @@ proc coCreateMcuFile {path} {
     # Datenverarbeitung
     # echo übergehen, auf Ende-Meldung warten
     while 1 {
-      restartCommTimeout 3
-      append data [yield ""]
-
       set dataend [string last "$stopString\r\n" $data]
       
       printDebugVars "skipping echo for data end" data dataend
@@ -217,6 +214,9 @@ proc coCreateMcuFile {path} {
       if {$datLen > 20} {
         set data [string replace $data 0 [expr $datLen - 21]]
       }
+
+      restartCommTimeout 3
+      append data [yield ""]
     }
       
     set mcu_tree_cache(/mcu/$path) [dict create type "file" mode 0644 nlink 1 size 0 mtime [clock seconds] ctime [clock seconds]]

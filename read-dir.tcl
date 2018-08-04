@@ -226,10 +226,7 @@ proc coReadMcuFiles {} {
       # Tabellenzeilen einlesen
       for {set i 0} {$i < $tableLength} {incr i} {
         while 1 {
-          restartCommTimeout 3
-          append data [yield ""]
-
-          set snum [scan $data " '%\[^\r\n\t'\]' '%d'%*\[\r\]%*\[\n\]%n" filename filesize nextData]
+          set snum [scan $data " '%\[^\r\n\t'\]'\t'%d'%*\[\r\]%*\[\n\]%n" filename filesize nextData]
           printDebugVars "collecting data" data snum
 
           if {$snum == 3} {
@@ -238,6 +235,9 @@ proc coReadMcuFiles {} {
             dict set fileDict $filename $filesize
             break
           }
+          
+          restartCommTimeout 3
+          append data [yield ""]
         }
       }
 
@@ -255,6 +255,7 @@ proc coReadMcuFiles {} {
     }
 
     if {![string match "> *" $data]} {
+      printDebugVars "try to catch final prompt yield" data
       # try to catch the final prompt
       after 100
       restartCommTimeout 3
